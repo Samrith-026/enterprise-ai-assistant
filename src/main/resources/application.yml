@@ -1,0 +1,62 @@
+spring:
+  application:
+    name: enterprise-ai-assistant
+  datasource:
+    url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:enterprise_ai}
+    username: ${POSTGRES_USER:enterprise}
+    password: ${POSTGRES_PASSWORD:enterprise_dev}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+  data:
+    redis:
+      repositories:
+        enabled: false
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      connect-timeout: 2s
+      timeout: 2s
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      timeout: 60s
+      chat:
+        options:
+          model: ${OPENAI_CHAT_MODEL:gpt-4o-mini}
+      embedding:
+        options:
+          model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
+          dimensions: 1536
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+        dimensions: 1536
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+    tools:
+      throw-exception-on-error: true
+      limits:
+        max-total-tool-calls: 4
+        max-calls-per-tool-default: 3
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+server:
+  address: 127.0.0.1
+  error:
+    include-message: never
+    include-stacktrace: never
+assistant:
+  memory:
+    max-messages: 20
+  rag:
+    top-k: 4
+    similarity-threshold: 0.5
+  cache:
+    ttl: 10m

@@ -1,0 +1,46 @@
+@baseUrl = http://localhost:8080
+
+### Health
+GET {{baseUrl}}/actuator/health
+
+### Ingest synthetic handbook
+POST {{baseUrl}}/api/documents
+Content-Type: application/json
+
+< ./demo/employee-handbook.json
+
+### RAG answer
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+
+< ./demo/rag-question.json
+
+### Remember user detail
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+
+< ./demo/memory-intro.json
+
+### Recall within same conversation
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+
+< ./demo/memory-followup.json
+
+### Different conversation
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+
+< ./demo/memory-isolated.json
+
+### Tool lookup, cache miss
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+
+< ./demo/tool-first.json
+
+### Tool lookup in another conversation, cache hit
+POST {{baseUrl}}/api/chat
+Content-Type: application/json
+
+< ./demo/tool-second.json

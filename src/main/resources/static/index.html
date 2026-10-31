@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#123c38">
+    <title>Enterprise AI · Knowledge workspace</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='11' fill='%23123c38'/%3E%3Cpath d='m20 8 12 12-12 12L8 20Z' fill='%23c7e6b8'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#message">Skip to chat</a>
+<div class="workspace">
+    <aside class="sidebar" aria-label="Workspace">
+        <a class="brand" href="/" aria-label="Enterprise AI home">
+            <span class="brand-symbol" aria-hidden="true">◇</span>
+            <span>Enterprise<span class="brand-light">AI</span></span>
+        </a>
+        <div class="workspace-label">YOUR WORKSPACE</div>
+        <div class="active-page"><span aria-hidden="true">✧</span> Knowledge assistant</div>
+        <button class="new-chat" id="new-chat" type="button"><span aria-hidden="true">＋</span> New conversation</button>
+        <div class="conversation-settings">
+            <label for="conversation-id">Conversation ID</label>
+            <input id="conversation-id" maxlength="100" pattern="[A-Za-z0-9_-]+" required spellcheck="false" autocomplete="off" aria-describedby="conversation-help">
+            <p id="conversation-help">Use the same ID to continue a conversation. New IDs start fresh.</p>
+            <p class="inline-error" id="conversation-error" role="status"></p>
+        </div>
+        <div class="sidebar-bottom">
+            <div class="sidebar-note"><span aria-hidden="true">◎</span><p>A little more context.<br>A lot more clarity.</p></div>
+            <button class="connection" id="check-health" type="button" title="Check application health">
+                <span class="status-dot" id="health-dot" aria-hidden="true"></span>
+                <span id="health-status" role="status">Checking connection…</span>
+                <span class="refresh-icon" aria-hidden="true">↻</span>
+            </button>
+        </div>
+    </aside>
+
+    <div class="main-shell">
+        <header class="topbar">
+            <span>Workspace <span class="breadcrumb-divider">/</span> <strong>Assistant</strong></span>
+            <span class="local-badge"><span aria-hidden="true">●</span> Local workspace</span>
+        </header>
+        <main>
+            <div class="page-heading"><div><div class="eyebrow">KNOWLEDGE, CONNECTED</div><h1>Your enterprise assistant</h1></div><span class="heading-mark" aria-hidden="true">✳</span></div>
+            <div class="content-grid">
+                <section class="chat-panel" aria-label="Chat with your enterprise assistant">
+                    <div class="panel-heading"><span class="assistant-avatar" aria-hidden="true">✧</span><div><h2>Ask your workspace</h2><p>Company knowledge. Clear answers.</p></div><span class="ready-label">Ready to help</span></div>
+                    <div class="chat-scroll" id="chat-scroll">
+                        <div class="welcome" id="welcome">
+                            <div class="welcome-symbol" aria-hidden="true">✧</div>
+                            <h2>A good question.<br>A clearer next step.</h2>
+                            <p>Explore your company’s documents, find the right contact, or pick up where you left off.</p>
+                            <div class="suggestions" aria-label="Suggested questions">
+                                <button type="button" data-prompt="What is the company's vacation policy?"><span class="suggestion-icon" aria-hidden="true">▤</span><span>Understand a policy<small>Ask about vacation and carry-over</small></span><span aria-hidden="true">↗</span></button>
+                                <button type="button" data-prompt="Look up the HR department contact email."><span class="suggestion-icon" aria-hidden="true">◎</span><span>Find the right person<small>Get your HR department’s email</small></span><span aria-hidden="true">↗</span></button>
+                                <button type="button" data-prompt="My project codename is Lantern. Please remember it for this conversation."><span class="suggestion-icon" aria-hidden="true">↳</span><span>Keep the context<small>Start a conversation that remembers</small></span><span aria-hidden="true">↗</span></button>
+                            </div>
+                        </div>
+                        <div id="messages" class="messages" role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions"></div>
+                    </div>
+                    <div class="composer-area">
+                        <p class="chat-status" id="chat-status" role="status"></p>
+                        <form id="chat-form">
+                            <label class="sr-only" for="message">Your message</label>
+                            <div class="composer"><textarea id="message" rows="2" maxlength="8000" required placeholder="Ask a question about your workspace…"></textarea><button id="send" class="send-button" type="submit" aria-label="Send message"><span aria-hidden="true">↑</span></button></div>
+                            <div class="composer-caption"><span>Enter to send · Shift + Enter for a new line</span><span>Answers can be imperfect. Verify important details.</span></div>
+                        </form>
+                    </div>
+                </section>
+
+                <aside class="knowledge-panel" aria-labelledby="knowledge-title">
+                    <div class="knowledge-heading"><span class="book-icon" aria-hidden="true">▤</span><div><div class="eyebrow">MAKE IT YOURS</div><h2 id="knowledge-title">Company knowledge</h2></div></div>
+                    <p class="knowledge-intro">Give your assistant something to work with. Add a policy, handbook, or company note.</p>
+                    <form id="document-form">
+                        <label for="document-title">Document title</label>
+                        <input id="document-title" maxlength="200" required placeholder="e.g. Employee Handbook">
+                        <label for="document-content">Document content</label>
+                        <textarea id="document-content" rows="9" maxlength="200000" required placeholder="Paste the text you want your assistant to reference…"></textarea>
+                        <div class="document-hint"><span aria-hidden="true">ⓘ</span> Use synthetic or approved demo content.</div>
+                        <button id="add-document" class="primary-button" type="submit"><span aria-hidden="true">＋</span> Add to knowledge</button>
+                    </form>
+                    <div class="document-status" id="document-status" role="status"></div>
+                    <div class="knowledge-footer"><span class="small-spark" aria-hidden="true">✧</span><div><h3>Better context, better answers</h3><p>Added documents are available to all conversations in this local workspace.</p></div></div>
+                </aside>
+            </div>
+            <footer class="page-footer"><span>Enterprise AI Assistant</span><span>Built for questions worth asking.</span></footer>
+        </main>
+    </div>
+</div>
+<noscript>This interface needs JavaScript enabled to call the chat and document APIs.</noscript>
+</body>
+</html>
