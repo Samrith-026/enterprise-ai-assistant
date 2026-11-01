@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -35,11 +37,28 @@ public class GlobalExceptionHandler {
         return response(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "A valid JSON request body is required.", request, Map.of());
     }
 
+    @ExceptionHandler(InvalidDocumentException.class)
+    ResponseEntity<ApiError> invalidDocument(InvalidDocumentException ex, HttpServletRequest request) {
+        return response(HttpStatus.BAD_REQUEST, "INVALID_DOCUMENT", ex.getMessage(), request, Map.of());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ResponseEntity<ApiError> uploadTooLarge(HttpServletRequest request) {
+        return response(HttpStatus.BAD_REQUEST, "FILE_TOO_LARGE", "The uploaded file exceeds the 10 MB limit.",
+                request, Map.of());
+    }
+
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    ResponseEntity<ApiError> missingUpload(HttpServletRequest request) {
+        return response(HttpStatus.BAD_REQUEST, "INVALID_DOCUMENT", "A multipart file field named 'file' is required.",
+                request, Map.of());
+    }
+
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     ResponseEntity<ApiError> methodNotAllowed(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).headers(ex.getHeaders())
                 .body(new ApiError(Instant.now(), 405, "METHOD_NOT_ALLOWED",
-                        "This endpoint does not support that HTTP method. Use POST with a JSON body for /api/documents and /api/chat.",
+                        "This endpoint does not support that HTTP method. Use POST with JSON for /api/documents or /api/chat, and multipart field 'file' for /api/documents/upload.",
                         request.getRequestURI(), Map.of()));
     }
 

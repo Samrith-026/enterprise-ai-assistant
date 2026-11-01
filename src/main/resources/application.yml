@@ -1,6 +1,10 @@
 spring:
   application:
     name: enterprise-ai-assistant
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
   datasource:
     url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:enterprise_ai}
     username: ${POSTGRES_USER:enterprise}

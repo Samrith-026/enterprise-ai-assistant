@@ -72,6 +72,14 @@
                 <aside class="knowledge-panel" aria-labelledby="knowledge-title">
                     <div class="knowledge-heading"><span class="book-icon" aria-hidden="true">▤</span><div><div class="eyebrow">MAKE IT YOURS</div><h2 id="knowledge-title">Company knowledge</h2></div></div>
                     <p class="knowledge-intro">Give your assistant something to work with. Add a policy, handbook, or company note.</p>
+                    <form id="document-upload-form" class="upload-form">
+                        <label for="document-file">Upload a PDF or TXT</label>
+                        <input id="document-file" type="file" accept=".pdf,.txt,application/pdf,text/plain" required aria-describedby="file-help">
+                        <p class="file-help" id="file-help">One file, up to 10 MB. Scanned PDFs need OCR before upload.</p>
+                        <button id="upload-document" class="primary-button secondary-button" type="submit" disabled>Upload document</button>
+                    </form>
+                    <div class="document-status" id="upload-status" role="status" aria-live="polite"></div>
+                    <div class="or-divider" aria-hidden="true"><span>OR PASTE TEXT MANUALLY</span></div>
                     <form id="document-form">
                         <label for="document-title">Document title</label>
                         <input id="document-title" maxlength="200" required placeholder="e.g. Employee Handbook">

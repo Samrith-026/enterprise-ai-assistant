@@ -1,0 +1,7 @@
+VACATION POLICY: Full-time employees receive 20 paid vacation days per calendar year. Vacation requests must be submitted to the employee's manager at least 10 business days before the start date. Up to 5 unused vacation days may be carried into the next calendar year and must be used by March 31.
+
+REMOTE WORK POLICY: Employees may work remotely up to three days per week with manager approval.
+
+SECURITY POLICY: Employees must use multi-factor authentication for corporate applications.
+
+This handbook is synthetic interview demonstration data.

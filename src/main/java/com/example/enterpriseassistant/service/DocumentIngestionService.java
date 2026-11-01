@@ -28,16 +28,28 @@ public class DocumentIngestionService {
     }
 
     public DocumentResponse ingest(DocumentRequest request) {
+        return ingest(request.title(), request.content(), "json-api", null, null);
+    }
+
+    public DocumentResponse ingestUploaded(String title, String content, String filename, String fileType) {
+        return ingest(title, content, "file-upload", filename, fileType);
+    }
+
+    private DocumentResponse ingest(String title, String content, String source, String filename, String fileType) {
         UUID documentId = UUID.randomUUID();
         Instant timestamp = Instant.now();
         log.info("Document ingestion started documentId={}", documentId);
         try {
             var metadata = new HashMap<String, Object>();
             metadata.put("documentId", documentId.toString());
-            metadata.put("title", request.title());
-            metadata.put("source", "json-api");
+            metadata.put("title", title);
+            metadata.put("source", source);
             metadata.put("ingestedAt", timestamp.toString());
-            List<Document> split = splitter.apply(List.of(new Document(request.content(), metadata)));
+            if (filename != null) {
+                metadata.put("sourceFilename", filename);
+                metadata.put("fileType", fileType);
+            }
+            List<Document> split = splitter.apply(List.of(new Document(content, metadata)));
             if (split.isEmpty()) {
                 throw new IllegalArgumentException("Document produced no chunks");
             }
@@ -49,7 +61,7 @@ public class DocumentIngestionService {
             }
             log.info("Embedding and storing documentId={} chunkCount={}", documentId, chunks.size());
             vectorStore.add(chunks);
-            return new DocumentResponse(documentId, request.title(), chunks.size(), timestamp);
+            return new DocumentResponse(documentId, title, chunks.size(), timestamp);
         } catch (RuntimeException ex) {
             throw new DocumentIngestionException(ex);
         }

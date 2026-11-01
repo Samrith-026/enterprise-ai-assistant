@@ -2,7 +2,7 @@
 
 ## A. 60-second project explanation
 
-“I built an enterprise knowledge assistant as one Java 21 Spring Boot application. Users submit documents through a JSON API. Spring AI splits the text, creates OpenAI embeddings, and stores them in PostgreSQL with pgvector. When a user asks a question, a ChatClient retrieves relevant chunks and supplies them to the model, so company-specific answers can use enterprise knowledge instead of model guesses. A conversation-memory advisor preserves recent messages under an explicit conversation ID. The model can also call a Java department-directory tool; deterministic directory results are cached in Redis. Completed exchanges are saved through Spring Data JPA for audit history. I kept controllers, services, repositories, DTOs, and configuration separate, and tested the behavior without real AI calls. It is a focused interview demo, with production concerns and limitations documented.”
+“I built an enterprise knowledge assistant as one Java 21 Spring Boot application. Users can paste approved company text or upload PDF/TXT files. Uploaded files are parsed into text, converted to Spring AI Document objects, split with TokenTextSplitter, embedded through the configured embedding model, and stored in PostgreSQL using pgvector. Both ingestion paths feed the same VectorStore and RAG retrieval pipeline. When a user asks a question, a ChatClient retrieves relevant chunks and supplies them to the model, so company-specific answers can use enterprise knowledge instead of model guesses. A conversation-memory advisor preserves recent messages under an explicit conversation ID. The model can also call a Java department-directory tool; deterministic directory results are cached in Redis. Completed exchanges are saved through Spring Data JPA for audit history. I kept controllers, services, repositories, DTOs, and configuration separate, and tested the behavior without real AI calls. It is a focused interview demo, with production concerns and limitations documented.”
 
 ## B. Three-minute architecture walkthrough
 
@@ -33,11 +33,14 @@ The tool loop may involve multiple model calls. Retrieval also needs a query emb
 ## D. Document ingestion flow
 
 ```text
-DocumentRequest -> validation -> Spring AI Document + metadata
- -> TokenTextSplitter -> chunks with shared documentId and unique chunk IDs
+Manual text: DocumentRequest -> validation -> Spring AI Document + metadata
+PDF/TXT: multipart upload -> validation -> PDFBox/UTF-8 extraction -> Spring AI Document + metadata
+Both: TokenTextSplitter -> chunks with shared documentId and unique chunk IDs
  -> VectorStore.add -> OpenAI EmbeddingModel -> PostgreSQL vector_store
- -> DocumentResponse(documentId, chunkCount)
+ -> document response with documentId and chunkCount
 ```
+
+Uploaded PDF/TXT bytes are processed in memory; raw files are not persisted. PDFBox extracts selectable text. Scanned/image-only PDFs require OCR, which is outside this MVP. The upload limit is 10 MB and extracted text is limited to 200,000 characters.
 
 An embedding is a numeric representation of meaning. Similarity search finds nearby representations; it does not directly find a verified answer. The LLM receives the retrieved text, not just the vector. We use 1536 dimensions consistently for storage and embedding requests.
 

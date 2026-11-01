@@ -3,7 +3,8 @@
 const elements = Object.fromEntries([
     "conversation-id", "conversation-error", "new-chat", "check-health", "health-dot", "health-status",
     "chat-form", "message", "send", "chat-status", "messages", "welcome", "chat-scroll",
-    "document-form", "document-title", "document-content", "add-document", "document-status"
+    "document-form", "document-title", "document-content", "add-document", "document-status",
+    "document-upload-form", "document-file", "upload-document", "upload-status"
 ].map(id => [id, document.getElementById(id)]));
 
 let chatPending = false;
@@ -71,12 +72,13 @@ async function requestJson(path, body, timeout = 120000) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
     try {
+        const isFormData = body instanceof FormData;
         const response = await fetch(path, {
             method: body === undefined ? "GET" : "POST",
-            headers: body === undefined ? { Accept: "application/json" } : {
+            headers: body === undefined || isFormData ? { Accept: "application/json" } : {
                 Accept: "application/json", "Content-Type": "application/json"
             },
-            body: body === undefined ? undefined : JSON.stringify(body),
+            body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body),
             signal: controller.signal
         });
         const data = await response.json().catch(() => ({}));
@@ -175,6 +177,48 @@ elements["document-form"].addEventListener("submit", async event => {
         documentPending = false;
         for (const id of ["document-title", "document-content", "add-document"]) elements[id].disabled = false;
         elements["document-form"].setAttribute("aria-busy", "false");
+    }
+});
+
+elements["document-file"].addEventListener("change", () => {
+    const file = elements["document-file"].files[0];
+    elements["upload-document"].disabled = !file;
+    setStatus("upload-status", file ? "Selected: " + file.name : "");
+});
+
+elements["document-upload-form"].addEventListener("submit", async event => {
+    event.preventDefault();
+    if (documentPending) return;
+    const file = elements["document-file"].files[0];
+    if (!file) {
+        setStatus("upload-status", "Choose a PDF or TXT file first.", true);
+        return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+        setStatus("upload-status", "The file exceeds the 10 MB upload limit.", true);
+        return;
+    }
+    documentPending = true;
+    elements["document-file"].disabled = true;
+    elements["upload-document"].disabled = true;
+    elements["upload-document"].textContent = "Uploading…";
+    elements["document-upload-form"].setAttribute("aria-busy", "true");
+    setStatus("upload-status", "Extracting text and adding it to company knowledge…");
+    try {
+        const form = new FormData();
+        form.append("file", file);
+        const response = await requestJson("/api/documents/upload", form);
+        setStatus("upload-status", "Added “" + response.filename + "” · " + response.chunkCount
+                + (response.chunkCount === 1 ? " chunk" : " chunks") + ". You can ask about it now.");
+        elements["document-upload-form"].reset();
+    } catch (error) {
+        setStatus("upload-status", error.message, true);
+    } finally {
+        documentPending = false;
+        elements["document-file"].disabled = false;
+        elements["upload-document"].disabled = !elements["document-file"].files.length;
+        elements["upload-document"].textContent = "Upload document";
+        elements["document-upload-form"].setAttribute("aria-busy", "false");
     }
 });
 
