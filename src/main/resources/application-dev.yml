@@ -1,0 +1,6 @@
+assistant:
+  rag:
+    log-retrieval: true
+logging:
+  level:
+    com.example.enterpriseassistant.rag.ResumeProfileRagAdvisor: DEBUG

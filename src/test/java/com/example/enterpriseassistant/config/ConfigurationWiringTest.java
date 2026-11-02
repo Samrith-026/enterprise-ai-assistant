@@ -1,6 +1,7 @@
 package com.example.enterpriseassistant.config;
 
 import com.example.enterpriseassistant.service.DepartmentDirectoryService;
+import com.example.enterpriseassistant.rag.ResumeProfileRagAdvisor;
 import com.example.enterpriseassistant.tool.DepartmentContactTool;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
@@ -33,6 +34,9 @@ class ConfigurationWiringTest {
                     .isEqualTo(java.time.Duration.ofMinutes(10));
             assertThat(context.getEnvironment().getProperty("spring.ai.vectorstore.pgvector.initialize-schema"))
                     .isEqualTo("true");
+            assertThat(context.getEnvironment().getProperty("assistant.rag.similarity-threshold"))
+                    .isEqualTo("0.33");
+            assertThat(context.getBean(ResumeProfileRagAdvisor.class)).isNotNull();
         }
     }
 

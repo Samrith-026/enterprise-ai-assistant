@@ -97,7 +97,11 @@ Both ingestion methods use the same splitter, OpenAI embedding model, and pgvect
 
 ## How the important flows work
 
-**RAG ingestion:** Manual text follows `POST /api/documents` → Spring AI `Document` + metadata. PDF/TXT upload follows `POST /api/documents/upload` → PDFBox/UTF-8 text extraction → Spring AI `Document` + filename/type metadata. Both paths use the same `TokenTextSplitter` (about 500 tokens), OpenAI embedding model, and `VectorStore.add` into pgvector. For each chat turn, `QuestionAnswerAdvisor` searches the shared store (top 4, cosine similarity threshold 0.5) and adds retrieved text to the prompt. Retrieval runs outside the tool loop so it executes once per turn. These retrieval settings are starting points, not measured quality guarantees.
+**RAG ingestion:** Manual text follows `POST /api/documents` → Spring AI `Document` + metadata. PDF/TXT upload follows `POST /api/documents/upload` → PDFBox/UTF-8 text extraction → Spring AI `Document` + filename/type metadata. Both paths use the same `TokenTextSplitter` (about 500 tokens), OpenAI embedding model, and `VectorStore.add` into pgvector. For each chat turn, `QuestionAnswerAdvisor` searches the shared store (top 4, cosine similarity threshold 0.33) and adds retrieved text to the prompt. A deterministic advisor expands only vague profile questions and project-specific “tools used” questions for search; the model still receives the same retrieved-context grounding rules. These retrieval settings are starting points, not measured quality guarantees.
+
+To inspect resume retrieval during development, set `SPRING_PROFILES_ACTIVE=dev` before starting the app. Debug logs report the number of retrieved chunks and how many came from a source whose title or filename identifies it as a resume/CV. Logs do not include resume text, names, or filenames. A `resumeChunks=0` result means none of the top four accepted matches were identified as resume chunks; it does not authorize the model to guess. The prompt continues to require an unavailable response when retrieved context does not support an answer.
+
+Try `Tell me about myself` for a broad resume summary or `What tools did you use in the Enterprise AI Assistant?` for project technologies. Both rewrites add search terms only for retrieval; no resume facts are added, and the answer must still come from retrieved content.
 
 **Memory:** `MessageWindowChatMemory` retains up to 20 messages per conversation in this JVM. `ChatService` supplies `ChatMemory.CONVERSATION_ID` on every call. History is injected by `MessageChatMemoryAdvisor`; JPA history is a separate audit record and is not automatically replayed. Restarting loses memory. Client-selected IDs provide grouping, not authentication or ownership protection.
 
@@ -117,7 +121,7 @@ To demonstrate MCP, start Compose, select **Try the MCP connection** in the brow
 java -jar target/enterprise-ai-assistant-0.0.1-SNAPSHOT.jar
 ```
 
-Tests run without keys, PostgreSQL, Redis, or external AI calls. MockMvc tests verify controllers and errors. Service tests verify chunking/metadata, completed audit persistence, and failure behavior. `AiFlowTest` uses the real advisor chain with a fake model and mocked vector store to verify RAG, conversation isolation, and tool execution. The cache proxy test uses an in-process cache; the manual demo verifies actual Redis. Fake-model tests prove wiring, not live answer quality.
+Tests run without keys, PostgreSQL, Redis, or external AI calls. MockMvc tests verify controllers and errors. Service tests verify chunking/metadata, completed audit persistence, and failure behavior. `AiFlowTest` uses the real advisor chain with a fake model and mocked vector store to verify RAG, resume query rewriting, retrieved resume context, conversation isolation, and tool execution. Retrieval diagnostic tests verify resume-chunk counts without exposing document text. The cache proxy test uses an in-process cache; the manual demo verifies actual Redis. Fake-model tests prove wiring, not live answer quality.
 
 ## Layout and design decisions
 

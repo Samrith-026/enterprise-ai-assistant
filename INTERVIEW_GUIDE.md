@@ -79,7 +79,7 @@ An embedding is a numeric representation of meaning. Similarity search finds nea
 
 - **Modular monolith:** easier to run, debug, and explain; no need for distributed-service complexity at this scale.
 - **Layering:** thin controllers, orchestrating services, Spring Data persistence. DTOs protect the API from entity changes.
-- **Simple RAG:** `QuestionAnswerAdvisor` provides a small, understandable pipeline. It lacks history-aware query rewriting, reranking, and evaluated retrieval tuning.
+- **Simple RAG:** `QuestionAnswerAdvisor` provides retrieval and grounding. A narrow deterministic rewrite targets vague resume/profile questions; it does not generate new facts. The project still lacks history-aware follow-up rewriting, reranking, and evaluated retrieval tuning.
 - **Resource prompts:** reviewable and maintainable. Prompts reduce guessing but cannot guarantee factuality or enforce data access.
 - **Memory versus audit:** memory is fast and bounded per conversation; JPA records are durable. A complete audit log is not automatically the best model context.
 - **Tool separation:** an annotation exposes capability; a service implements lookup and caching. Crossing that bean boundary allows the cache proxy to work.

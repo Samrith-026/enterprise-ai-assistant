@@ -3,6 +3,8 @@ package com.example.enterpriseassistant.config;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
+import com.example.enterpriseassistant.rag.ResumeProfileQueryRewriter;
+import com.example.enterpriseassistant.rag.ResumeProfileRagAdvisor;
 import com.example.enterpriseassistant.tool.DepartmentContactTool;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
@@ -24,6 +26,7 @@ public class AiConfiguration {
     @Bean
     ChatClient enterpriseChatClient(ChatClient.Builder builder, ChatMemory memory, VectorStore vectorStore,
             DepartmentContactTool tool, SyncMcpToolCallbackProvider mcpTools,
+            ResumeProfileRagAdvisor resumeProfileRagAdvisor,
             @Value("classpath:prompts/enterprise-assistant.st") Resource systemPrompt,
             @Value("classpath:prompts/rag-context.st") Resource ragPrompt,
             @Value("${assistant.rag.top-k}") int topK,
@@ -37,9 +40,20 @@ public class AiConfiguration {
                         .template(ragPrompt.getContentAsString(StandardCharsets.UTF_8)).build())
                 .build();
         return builder.defaultSystem(systemPrompt.getContentAsString(StandardCharsets.UTF_8))
-                .defaultAdvisors(memoryAdvisor, ragAdvisor)
+                .defaultAdvisors(memoryAdvisor, resumeProfileRagAdvisor, ragAdvisor)
                 .defaultTools(tool, mcpTools)
                 .build();
+    }
+
+    @Bean
+    ResumeProfileQueryRewriter resumeProfileQueryRewriter() {
+        return new ResumeProfileQueryRewriter();
+    }
+
+    @Bean
+    ResumeProfileRagAdvisor resumeProfileRagAdvisor(ResumeProfileQueryRewriter queryRewriter,
+            @Value("${assistant.rag.log-retrieval:false}") boolean logRetrieval) {
+        return new ResumeProfileRagAdvisor(queryRewriter, logRetrieval);
     }
 
     @Bean

@@ -71,6 +71,7 @@ assistant:
     max-messages: 20
   rag:
     top-k: 4
-    similarity-threshold: 0.5
+    similarity-threshold: 0.33
+    log-retrieval: false
   cache:
     ttl: 10m

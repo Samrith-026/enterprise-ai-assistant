@@ -6,6 +6,9 @@ import java.util.Map;
 
 import com.example.enterpriseassistant.dto.ChatRequest;
 import com.example.enterpriseassistant.repository.ChatInteractionRepository;
+import com.example.enterpriseassistant.rag.RagRetrievalDiagnostics;
+import com.example.enterpriseassistant.rag.ResumeProfileQueryRewriter;
+import com.example.enterpriseassistant.rag.ResumeProfileRagAdvisor;
 import com.example.enterpriseassistant.service.ChatService;
 import com.example.enterpriseassistant.service.DepartmentDirectoryService;
 import com.example.enterpriseassistant.tool.DepartmentContactTool;
@@ -47,8 +50,9 @@ class AiFlowTest {
         when(model.getOptions()).thenReturn(ToolCallingChatOptions.builder().build());
         ChatClient client = new AiConfiguration().enterpriseChatClient(ChatClient.builder(model), memory, store,
                 new DepartmentContactTool(directory), mcpProvider,
+                new ResumeProfileRagAdvisor(new ResumeProfileQueryRewriter(), true),
                 new ClassPathResource("prompts/enterprise-assistant.st"),
-                new ClassPathResource("prompts/rag-context.st"), 4, 0.5);
+                new ClassPathResource("prompts/rag-context.st"), 4, 0.33);
         return new ChatService(client, mock(ChatInteractionRepository.class));
     }
 
@@ -123,6 +127,56 @@ class AiFlowTest {
                 .answer()).contains("degraded");
         verify(callback).call(contains("Payroll Portal"), any(ToolContext.class));
         verify(model, times(2)).call(any(Prompt.class));
+    }
+
+    @Test
+    void vagueResumeProjectQuestionIsRewrittenForSearchAndResumeContextReachesModel() throws Exception {
+        List<SearchRequest> searches = new ArrayList<>();
+        String resumeChunk = "Enterprise AI Assistant used Java 21, Spring Boot, Spring AI, PostgreSQL with pgvector, and Redis.";
+        when(store.similaritySearch(any(SearchRequest.class))).thenAnswer(invocation -> {
+            searches.add(invocation.getArgument(0));
+            return List.of(new Document(resumeChunk,
+                    Map.of("title", "Resume.pdf", "sourceFilename", "Resume.pdf", "fileType", "pdf")));
+        });
+        List<Prompt> prompts = new ArrayList<>();
+        when(model.call(any(Prompt.class))).thenAnswer(invocation -> {
+            prompts.add(invocation.getArgument(0));
+            return reply("The resume lists Java 21, Spring Boot, Spring AI, PostgreSQL with pgvector, and Redis.");
+        });
+
+        ChatService service = createService();
+        var response = service.chat(new ChatRequest("resume-tools", "What tools did you use in the Enterprise AI Assistant?"));
+        service.chat(new ChatRequest("resume-profile", "Tell me about myself"));
+
+        assertThat(response.answer()).contains("Java 21", "Spring Boot", "Spring AI", "pgvector", "Redis");
+        assertThat(searches).hasSize(2);
+        assertThat(searches.getFirst().getTopK()).isEqualTo(4);
+        assertThat(searches.getFirst().getSimilarityThreshold()).isEqualTo(0.33);
+        assertThat(searches.getFirst().getQuery()).containsIgnoringCase("resume project details")
+                .containsIgnoringCase("developer tools").containsIgnoringCase("Enterprise AI Assistant");
+        assertThat(searches.get(1).getQuery()).containsIgnoringCase("resume profile details")
+                .containsIgnoringCase("professional summary").containsIgnoringCase("technical skills");
+        assertThat(prompts.getFirst().getContents()).contains(resumeChunk);
+        assertThat(RagRetrievalDiagnostics.summarize(List.of(new Document(resumeChunk,
+                Map.of("title", "Resume.pdf", "sourceFilename", "Resume.pdf")))))
+                .isEqualTo(new RagRetrievalDiagnostics.Summary(1, 1));
+    }
+
+    @Test
+    void emptyResumeRetrievalKeepsGroundingInstructionsInThePrompt() throws Exception {
+        when(store.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+        List<Prompt> prompts = new ArrayList<>();
+        when(model.call(any(Prompt.class))).thenAnswer(invocation -> {
+            prompts.add(invocation.getArgument(0));
+            return reply("I couldn't find that information in the resume.");
+        });
+
+        var response = createService().chat(new ChatRequest("resume-empty", "Tell me about myself"));
+
+        assertThat(response.answer()).contains("couldn't find that information");
+        assertThat(prompts.getFirst().getContents())
+                .contains("say that the information is unavailable", "do not invent facts");
+        verify(store).similaritySearch(any(SearchRequest.class));
     }
 
     private ChatResponse reply(String content) {
