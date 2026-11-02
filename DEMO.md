@@ -17,6 +17,8 @@ docker compose up -d --wait
 .\mvnw.cmd spring-boot:run
 ```
 
+Compose starts PostgreSQL, Redis, and the local demo MCP server. To show MCP after the application starts, submit `demo/mcp-product-status.json` or select **Try the MCP connection** in the browser. The model should use `get_product_status` for the fictional Payroll Portal. In another terminal, run `docker compose logs -f demo-mcp` to see the tool call arrive. The response is synthetic; the server has no real vendor access or write capability.
+
 Keep application logs visible. Preflight the full demo before presenting; model outputs and latency vary. Run the SQL once beforehand to establish the current row count. For repeat demos, restart the JVM to clear memory or change conversation IDs. Repeated ingestion adds document copies. To force an HR cache miss without deleting unrelated Redis keys:
 
 ```powershell

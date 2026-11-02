@@ -22,6 +22,16 @@ spring:
       connect-timeout: 2s
       timeout: 2s
   ai:
+    mcp:
+      client:
+        name: enterprise-ai-assistant
+        type: SYNC
+        request-timeout: 20s
+        streamable-http:
+          connections:
+            demo-product:
+              url: ${MCP_DEMO_SERVER_URL:http://localhost:8090}
+              endpoint: /mcp
     openai:
       api-key: ${OPENAI_API_KEY}
       timeout: 60s

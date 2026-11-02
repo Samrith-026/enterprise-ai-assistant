@@ -2,13 +2,13 @@
 
 ## A. 60-second project explanation
 
-“I built an enterprise knowledge assistant as one Java 21 Spring Boot application. Users can paste approved company text or upload PDF/TXT files. Uploaded files are parsed into text, converted to Spring AI Document objects, split with TokenTextSplitter, embedded through the configured embedding model, and stored in PostgreSQL using pgvector. Both ingestion paths feed the same VectorStore and RAG retrieval pipeline. When a user asks a question, a ChatClient retrieves relevant chunks and supplies them to the model, so company-specific answers can use enterprise knowledge instead of model guesses. A conversation-memory advisor preserves recent messages under an explicit conversation ID. The model can also call a Java department-directory tool; deterministic directory results are cached in Redis. Completed exchanges are saved through Spring Data JPA for audit history. I kept controllers, services, repositories, DTOs, and configuration separate, and tested the behavior without real AI calls. It is a focused interview demo, with production concerns and limitations documented.”
+“I built an enterprise knowledge assistant as one Java 21 Spring Boot application. Users can paste approved company text or upload PDF/TXT files. Documents are split, embedded, and stored in PostgreSQL with pgvector for retrieval. The ChatClient uses retrieval, conversation memory, and tools. It can call a Java department-directory tool, plus an MCP tool discovered from a separate local demo server over Streamable HTTP. The MCP server returns synthetic product-status data, showing how an assistant can connect to another product without making a real vendor call. Directory results are cached in Redis, and completed exchanges are saved through Spring Data JPA. Tests verify the flow without real AI calls, and the documented production limits are clear.”
 
 ## B. Three-minute architecture walkthrough
 
 **First minute — boundaries.** Start at `ChatController`: request records use Bean Validation. The controller delegates to `ChatService`, which owns the use case. It invokes one configured `ChatClient`, then saves a completed exchange through `ChatInteractionRepository`. The JPA entity is separate from the API response. `GlobalExceptionHandler` converts failures to consistent, sanitized errors.
 
-**Second minute — AI engineering.** `AiConfiguration` loads a system prompt from resources, attaches memory and RAG advisors, and registers the directory tool. `MessageWindowChatMemory` retains twenty messages per conversation in this JVM. `QuestionAnswerAdvisor` searches pgvector for relevant content. The tool-calling advisor is automatically registered in Spring AI 2.0; do not add it twice. Memory and retrieval run outside the tool loop. The model can request the tool, receive the result, and generate a final response.
+**Second minute — AI engineering.** `AiConfiguration` loads a system prompt, attaches memory and RAG advisors, and registers the local directory tool plus `SyncMcpToolCallbackProvider`. The MCP client discovers `get_product_status` from a separate Node server using Streamable HTTP. `MessageWindowChatMemory` retains twenty messages per conversation in this JVM. `QuestionAnswerAdvisor` searches pgvector for relevant content. Spring AI 2.0 automatically registers the tool-calling advisor. The model can request either tool, receive the result, and generate a final response.
 
 **Third minute — data and tradeoffs.** Document ingestion targets 500-token chunks with metadata, then `VectorStore.add` handles embeddings and storage. PostgreSQL holds vectors and audit rows with separate access abstractions. Redis caches only directory emails for ten minutes. The application runs locally while Compose runs dependencies. Tests use fake model responses and mocked storage to prove wiring, plus manual live checks for provider quality and actual infrastructure. Describe the limitations clearly: volatile memory, no authentication, no ACL filtering, no idempotency, and no claim of guaranteed factual correctness.
 
@@ -18,7 +18,7 @@
 POST /api/chat
  -> ChatController: validate ChatRequest
  -> ChatService: provide message and ChatMemory.CONVERSATION_ID
- -> ChatClient: system prompt and registered tools
+ -> ChatClient: system prompt, Java tool, and MCP-discovered tools
  -> MessageChatMemoryAdvisor: load this conversation's messages
  -> QuestionAnswerAdvisor: similarity search through VectorStore / pgvector
  -> automatic ToolCallingAdvisor: call OpenAI and execute requested Java tools
@@ -73,6 +73,7 @@ An embedding is a numeric representation of meaning. Similarity search finds nea
 | Redis | An external in-memory data service used here for expiring directory cache entries. |
 | `@Cacheable` | A Spring proxy checks the cache before invoking the method and stores eligible results. |
 | Docker Compose | Declares and starts the local PostgreSQL/pgvector and Redis services together. |
+| MCP | A standard protocol for an AI application to discover and call tools hosted by another process. Here, Spring AI calls a local read-only demo server over Streamable HTTP. |
 
 ## F. Design decisions and tradeoffs
 

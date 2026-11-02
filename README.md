@@ -15,6 +15,8 @@ flowchart TD
     RAG --> Tools[Auto-registered ToolCallingAdvisor]
     Tools --> OpenAI[OpenAI chat model]
     Tools --> Contact[DepartmentContactTool]
+    Tools --> McpProvider[SyncMcpToolCallbackProvider]
+    McpProvider --> DemoMcp[Local Streamable HTTP demo server]
     Contact --> Directory[DepartmentDirectoryService / Spring Cache]
     Directory --> Redis
     ChatService --> Repository[ChatInteractionRepository]
@@ -41,6 +43,7 @@ Copy `.env.example` to `.env` for Compose's local database settings. **The local
 | `POSTGRES_PASSWORD` | `enterprise_dev`; local development only |
 | `POSTGRES_PORT` | `5432` |
 | `REDIS_HOST` / `REDIS_PORT` | `localhost` / `6379` |
+| `MCP_DEMO_SERVER_URL` | `http://localhost:8090`; local Streamable HTTP MCP server |
 
 PowerShell setup (key entry is masked; value is never echoed):
 
@@ -57,7 +60,9 @@ docker compose up -d --wait
 .\mvnw.cmd spring-boot:run
 ```
 
-For Bash, use `export NAME=value`, then `./mvnw spring-boot:run`. The service binds to `127.0.0.1:8080`. Only Actuator health is exposed. PostgreSQL and Redis ports also bind to localhost. Compose volumes retain data; `docker compose down` stops services without deleting those volumes.
+For Bash, use `export NAME=value`, then `./mvnw spring-boot:run`. The service binds to `127.0.0.1:8080`. Only Actuator health is exposed. PostgreSQL, Redis, and the demo MCP server ports bind to localhost. Compose volumes retain data; `docker compose down` stops services without deleting those volumes.
+
+Compose also starts a small Node.js MCP server at `http://localhost:8090/mcp`. It is a separate local demo process, not another Spring Boot application. Spring AI connects over Streamable HTTP, discovers `get_product_status`, and registers it on the existing `ChatClient` alongside the Java department-contact tool. The MCP tool only reads fixed synthetic status records for “Employee Portal” and “Payroll Portal”; it makes no external product connection and has no write operations. Keep this unauthenticated demo endpoint on localhost; do not expose it to a network.
 
 Spring AI explicitly enables `spring.ai.vectorstore.pgvector.initialize-schema: true`. On startup it creates required extensions, the `vector_store` table, and the HNSW cosine index. Local Compose credentials have extension-creation privileges. JPA creates/updates `chat_interaction`; `open-in-view` is disabled. These development initialization choices should become controlled migrations in production.
 
@@ -95,7 +100,9 @@ Both ingestion methods use the same splitter, OpenAI embedding model, and pgvect
 
 **Memory:** `MessageWindowChatMemory` retains up to 20 messages per conversation in this JVM. `ChatService` supplies `ChatMemory.CONVERSATION_ID` on every call. History is injected by `MessageChatMemoryAdvisor`; JPA history is a separate audit record and is not automatically replayed. Restarting loses memory. Client-selected IDs provide grouping, not authentication or ownership protection.
 
-**Tools and cache:** `ChatClient.defaultTools` registers `getDepartmentContact`. Spring AI 2.0 automatically registers the tool-calling advisor: the model requests the Java method, Spring executes it, and the result returns to the model. The tool normalizes department names before invoking a separate proxied service. `@Cacheable` caches only deterministic email strings in Redis for ten minutes. Unknown contacts are not cached. Every tool invocation logs an event; the directory method logs only on cache misses. Repeated model turns can avoid a tool call using conversation history, so the cache demo uses distinct conversation IDs.
+**Tools and cache:** `ChatClient.defaultTools` registers `getDepartmentContact` and the discovered MCP callbacks from `SyncMcpToolCallbackProvider`. Spring AI 2.0 automatically registers the tool-calling advisor: the model requests a Java or MCP tool, the corresponding server executes it, and the result returns to the model. The department lookup caches only deterministic email strings in Redis for ten minutes. The MCP example is a separate Streamable HTTP server returning static synthetic statuses; it does not connect to a real vendor. Repeated model turns can avoid a tool call using conversation history, so demos that prove tool invocation should use new conversation IDs.
+
+To demonstrate MCP, start Compose, select **Try the MCP connection** in the browser, and submit the prompt. Or use `demo/mcp-product-status.json` with the chat API. `docker compose logs -f demo-mcp` shows the synthetic tool invocation. The tool is read-only and limited to two named demo products.
 
 **Persistence:** completed interactions become `ChatInteraction` records with UUID, conversation ID, question, answer, and creation time. Repository saves occur after the provider call, avoiding a long database transaction. AI calls, memory updates, and audit writes are not atomic; a failed audit save returns an error and does not roll back model memory. Do not blindly retry complete chat requests.
 

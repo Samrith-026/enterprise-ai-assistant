@@ -9,20 +9,22 @@ import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.ai.mcp.SyncMcpToolCallbackProvider;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.Resource;
 import org.springframework.core.Ordered;
+import org.springframework.core.io.Resource;
 
 @Configuration
 public class AiConfiguration {
     @Bean
     ChatClient enterpriseChatClient(ChatClient.Builder builder, ChatMemory memory, VectorStore vectorStore,
-            DepartmentContactTool tool,
+            DepartmentContactTool tool, ObjectProvider<SyncMcpToolCallbackProvider> mcpTools,
             @Value("classpath:prompts/enterprise-assistant.st") Resource systemPrompt,
             @Value("classpath:prompts/rag-context.st") Resource ragPrompt,
             @Value("${assistant.rag.top-k}") int topK,
@@ -35,10 +37,15 @@ public class AiConfiguration {
                 .promptTemplate(PromptTemplate.builder()
                         .template(ragPrompt.getContentAsString(StandardCharsets.UTF_8)).build())
                 .build();
-        return builder.defaultSystem(systemPrompt.getContentAsString(StandardCharsets.UTF_8))
-                .defaultAdvisors(memoryAdvisor, ragAdvisor)
-                .defaultTools(tool)
-                .build();
+        var chatClientBuilder = builder.defaultSystem(systemPrompt.getContentAsString(StandardCharsets.UTF_8))
+                .defaultAdvisors(memoryAdvisor, ragAdvisor);
+        SyncMcpToolCallbackProvider provider = mcpTools.getIfAvailable();
+        if (provider == null) {
+            chatClientBuilder.defaultTools(tool);
+        } else {
+            chatClientBuilder.defaultTools(tool, provider);
+        }
+        return chatClientBuilder.build();
     }
 
     @Bean
