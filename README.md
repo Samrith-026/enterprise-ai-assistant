@@ -1,6 +1,6 @@
 # Enterprise AI Assistant with Java Spring Boot
 
-A small enterprise knowledge assistant for an AI Engineer / Java interview. It combines a layered Java application with retrieval-augmented generation (RAG), isolated conversation memory, a read-only business tool, Redis caching, and JPA audit persistence.
+A small enterprise knowledge assistant for an AI Engineer / Java interview. It is one layered Spring Boot application with RAG, conversation memory, a local Java tool, a read-only MCP demo tool, Redis caching, and JPA audit persistence.
 
 ## Stack and architecture
 
@@ -8,24 +8,25 @@ Java 21, Maven, Spring Boot **4.1.2**, Spring AI **2.0.2**, OpenAI, PostgreSQL 1
 
 ```mermaid
 flowchart TD
-    Client --> ChatController --> ChatService --> ChatClient
-    ChatClient --> Memory[MessageChatMemoryAdvisor]
-    Memory --> RAG[QuestionAnswerAdvisor]
-    RAG --> Vectors[VectorStore / pgvector]
-    RAG --> Tools[Auto-registered ToolCallingAdvisor]
-    Tools --> OpenAI[OpenAI chat model]
-    Tools --> Contact[DepartmentContactTool]
-    Tools --> McpProvider[SyncMcpToolCallbackProvider]
-    McpProvider --> DemoMcp[Local Streamable HTTP demo server]
-    Contact --> Directory[DepartmentDirectoryService / Spring Cache]
-    Directory --> Redis
-    ChatService --> Repository[ChatInteractionRepository]
-    Repository --> PostgreSQL
-    Client --> DocumentController --> Ingestion[DocumentIngestionService]
-    Ingestion --> Splitter[TokenTextSplitter]
-    Splitter --> Vectors
+    Browser --> Controllers[REST controllers]
+    Controllers --> Services[Application services]
+    Services --> ChatClient[Spring AI ChatClient]
+    ChatClient --> OpenAI[OpenAI chat model]
+    ChatClient --> Memory[Conversation memory]
+    ChatClient --> RAG[QuestionAnswerAdvisor]
+    RAG --> Vectors[pgvector VectorStore]
+    ChatClient --> JavaTool[Department contact tool]
+    JavaTool --> Redis[Redis cache]
+    ChatClient --> McpClient[Spring AI MCP client]
+    McpClient --> DemoMcp[Local read-only MCP demo server]
+    Services --> JPA[Chat interaction repository]
+    JPA --> PostgreSQL[(PostgreSQL)]
+    Services --> Ingestion[Document ingestion and splitting]
+    Ingestion --> Vectors
     Vectors --> Embeddings[OpenAI embeddings]
 ```
+
+Keep the architecture easy to follow: controllers handle HTTP, services coordinate each use case, and repositories persist chat history. AI setup, prompts, memory, retrieval, and tools are configured once and shared through Spring beans. PostgreSQL/pgvector and Redis run in Docker; the small MCP server is separate only to demonstrate a real external-tool protocol connection.
 
 ## Prerequisites and configuration
 

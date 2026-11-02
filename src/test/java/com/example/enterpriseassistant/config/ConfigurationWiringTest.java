@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.mcp.SyncMcpToolCallbackProvider;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -43,6 +44,10 @@ class ConfigurationWiringTest {
         ChatClient.Builder chatClientBuilder() { return ChatClient.builder(mock(ChatModel.class)); }
         @Bean
         VectorStore vectorStore() { return mock(VectorStore.class); }
+        @Bean
+        SyncMcpToolCallbackProvider mcpToolCallbackProvider() {
+            return new SyncMcpToolCallbackProvider(java.util.List.of());
+        }
         @Bean
         RedisConnectionFactory redisConnectionFactory() { return mock(RedisConnectionFactory.class); }
     }

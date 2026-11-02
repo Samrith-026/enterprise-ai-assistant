@@ -27,7 +27,6 @@ import org.springframework.ai.tool.definition.ToolDefinition;
 import org.springframework.ai.tool.metadata.ToolMetadata;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.core.io.ClassPathResource;
 
 import static org.assertj.core.api.Assertions.*;
@@ -41,16 +40,13 @@ class AiFlowTest {
     private final DepartmentDirectoryService directory = spy(new DepartmentDirectoryService());
 
     private ChatService createService() throws Exception {
-        return createService(null);
+        return createService(new SyncMcpToolCallbackProvider(List.of()));
     }
 
     private ChatService createService(SyncMcpToolCallbackProvider mcpProvider) throws Exception {
         when(model.getOptions()).thenReturn(ToolCallingChatOptions.builder().build());
-        var beanFactory = new DefaultListableBeanFactory();
-        if (mcpProvider != null) beanFactory.registerSingleton("mcpToolCallbackProvider", mcpProvider);
         ChatClient client = new AiConfiguration().enterpriseChatClient(ChatClient.builder(model), memory, store,
-                new DepartmentContactTool(directory),
-                beanFactory.getBeanProvider(SyncMcpToolCallbackProvider.class),
+                new DepartmentContactTool(directory), mcpProvider,
                 new ClassPathResource("prompts/enterprise-assistant.st"),
                 new ClassPathResource("prompts/rag-context.st"), 4, 0.5);
         return new ChatService(client, mock(ChatInteractionRepository.class));
